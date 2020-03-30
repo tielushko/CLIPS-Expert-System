@@ -1,3 +1,18 @@
+;;;***********************************
+;;;    Tyler Brown, Oleg Tielushko    *
+;;;                                  *
+;;; Title: Zombie Apocalypse Planner *
+;;;                                  *
+;;; This system will help you decide *
+;;;  which weapon to use during the  * 
+;;;        zombie apocalypse.        *
+;;;                                  *
+;;;   Just load the program, press   *
+;;;          reset and run.          * 
+;;;***********************************        
+
+
+
 ;;;***************
 ;;;* CLASS  DEFS *
 ;;;***************
@@ -17,14 +32,8 @@
     (slot strong)
     (slot stamina)
     (slot on_the_move)
-    (slot user_weapon)
 )
 
-(defclass WEAPON
-    (is-a USER)
-    (role concrete)
-    (slot weapon_type)
-)
 
 ;;****************
 ;;* DEFFUNCTIONS *
@@ -42,134 +51,189 @@
           then (bind ?answer (lowcase ?answer))))
    ?answer)
 
-(deffunction yes-or-no-p (?question)
-   (bind ?response (ask-question ?question yes no y n))
-   (if (or (eq ?response yes) (eq ?response y))
-       then yes 
-       else no))
-
 ;;;***************
 ;;;* OBJECT DEFS *
 ;;;***************
 
+;Keeps track of the zombie's attributes
 (definstances ZOMBIE-INSTANCES
-    (z of ZOMBIE)
-    ;(crawling of ZOMBIE (walking no))
-    ;(rage of ZOMBIE (walking yes)(is_fast yes))
-    ;(walker of ZOMBIE (walking yes)(is_fast no))
+   (z of ZOMBIE)
 )
 
+;Keeps track of the survivor's (user's) attributes
 (definstances SURVIVOR-INSTANCES
-    (user of SURVIVOR)
+   (user of SURVIVOR)
 )
-
-;(definstances WEAPON-INSTANCES
-;    (sword of WEAPON (weapon_type edged))
-;    (bat of WEAPON (weapon_type blunt))
-;    (bow of WEAPON (weapon_type silent-ranged))
-;    (gun of WEAPON (weapon_type loud-ranged))
-;)
 
 ;;;***************
 ;;;*  QUESTIONS  *
 ;;;***************
 
 (defrule ask_moving (declare (salience 10000))
-    ?ins <- (object (is-a SURVIVOR))
+   ?ins <- (object (is-a SURVIVOR))
 =>
-    (send ?ins put-on_the_move (ask-question "Are you on the move(yes/no)? " yes no))))
-    ;(assert (on_the_move(yes-or-no-p "Are you on the move (yes/no)?"))))
+   (send ?ins put-on_the_move (ask-question "Are you on the move(yes/no)? " yes no)))
+)
 
-(defrule ask_strength ""
-	?ins <-(object (is-a SURVIVOR))
+(defrule ask_strength "" (declare (salience 300))
+	?ins <-(object (is-a SURVIVOR)(on_the_move yes))
 => 
-    (send ?ins put-strong (ask-question "Can you bench at least 135 lbs (yes/no)? " yes no))))
-	;(assert (strong (yes-or-no-p "Can you bench at least 135 lbs (yes/no)?"))))
+   (send ?ins put-strong (ask-question "Can you bench at least 135 lbs (yes/no)? " yes no)))
+)
 
-(defrule ask_stamina ""
-	?ins <- (object (is-a SURVIVOR))
+(defrule ask_stamina "" (declare (salience 300))
+	?ins <- (object (is-a SURVIVOR)(on_the_move yes))
 => 
-    (send ?ins put-stamina (ask-question "Can you run a mile in less than 8 minutes (yes/no)? " yes no))))
-	;(assert (stamina (yes-or-no-p "Can you run a mile in less than 8 minutes (yes/no)?"))))
+   (send ?ins put-stamina (ask-question "Can you run a mile in less than 8 minutes (yes/no)? " yes no)))
+)
 
-(defrule ask_walk ""
+(defrule ask_walk "" (declare (salience 300))
 	?ins <- (object (is-a ZOMBIE))
 => 
-    (send ?ins put-walking (ask-question "Can the zombies walk (yes/no)? " yes no))))
-	;(assert (walking (yes-or-no-p "Can the zombies walk (yes/no)?"))))
+   (send ?ins put-walking (ask-question "Can the zombies walk (yes/no)? " yes no))))
+)
 
-(defrule ask_speed ""
+(defrule ask_speed "" (declare (salience 300))
 	?ins <- (object (is-a ZOMBIE) (walking yes))
 => 
-     (send ?ins put-is_fast (ask-question "Do the zombies run (yes/no)? " yes no))))
-	;(assert (is_fast (yes-or-no-p "Do the zombies run (yes/no)?"))))
+   (send ?ins put-is_fast (ask-question "Do the zombies run (yes/no)? " yes no))))
+)
 
 ;;;***************
 ;;;*    RULES    *
 ;;;***************
 
+;classifies the user as sedentary and assigns their weapon
 (defrule if_sedentary (declare (salience 100))
-    ?ins <- (object (is-a SURVIVOR) (on_the_move no))
+   ?ins <- (object (is-a SURVIVOR) (on_the_move no))
 => 
-    (send ?ins put-user_weapon gun)
+   (assert (weapon_type gun))
 )
 
-(defrule is_fit
-    ?ins <- (object (is-a SURVIVOR) (strong yes) (stamina yes))
+(defrule suggest_sed (declare (salience 100))
+   (object (is-a SURVIVOR)(on_the_move no))
+   (weapon_type ?wep)
 =>
-    (send ?ins put-sur_type fit)
+   (printout t "A person who is in a base should use a " ?wep "." crlf)
 )
 
+;classifies the user as fit
+(defrule is_fit
+   ?ins <- (object (is-a SURVIVOR) (strong yes) (stamina yes))
+=>
+   (send ?ins put-sur_type fit)
+)
+
+;classifies the user as powerful
 (defrule is_powerful
     ?ins <- (object (is-a SURVIVOR) (strong yes) (stamina no))
 =>
     (send ?ins put-sur_type power)
 )
 
+;classifies the user as having stamina
 (defrule has_staying_power
-    ?ins <- (object (is-a SURVIVOR) (strong no) (stamina yes))
+   ?ins <- (object (is-a SURVIVOR) (strong no) (stamina yes))
 =>
-    (send ?ins put-sur_type runner)
+   (send ?ins put-sur_type runner)
 )
 
+;classifies the user as being a couch potato
 (defrule is_a_couch_potato
-    ?ins <- (object (is-a SURVIVOR) (strong no) (stamina no))
+   ?ins <- (object (is-a SURVIVOR) (strong no) (stamina no))
 =>
-    (send ?ins put-sur_type couch_potato)
+   (send ?ins put-sur_type couch_potato)
 )
 
-
-(defrule is_walker
-    ?ins <- (object (is-a ZOMBIE) (walking yes) (is_fast no))
-=>
-    (send ?ins put-z_type walker)
+(defrule if_couch_potato 
+   ?ins <- (object (is-a SURVIVOR) (sur_type couch_potato) (on_the_move yes))
+=> 
+   (assert(weapon_type gun))
 )
 
-(defrule is_sprinter
-    ?ins <- (object (is-a ZOMBIE) (walking yes) (is_fast yes))
-=>
-    (send ?ins put-z_type sprinter)
-)
-
+;classifies the zombie as a crawling zombie
 (defrule is_crawler
-    ?ins <- (object (is-a ZOMBIE) (walking no))
+   ?ins <-(object (is-a ZOMBIE) (walking no))
 =>
-    (send ?ins put-z_type crawler)
+   (send ?ins put-z_type crawler)
 )
 
-;not working yet, but the final version of these functions should be close to this;
-;(defrule use_gun(declare (salience -50))
-;    (object (is-a SURVIVOR) (sur_type fit) (on_the_move yes))
-;    (object (is-a ZOMBIE) (z_type sprinter))
-;=>
-;    (send user put-user_weapon gun)
-;)
-
-
-(defrule suggest_weapon (declare (salience -100))
-    (object (is-a SURVIVOR) (user_weapon ?wep) (sur_type ?stype) (on_the_move ?otm))
-    (object (is-a ZOMBIE) (z_type ?zt))
+;classifies the zombie as a walking zombie
+(defrule is_walker
+   ?ins <- (object (is-a ZOMBIE) (walking yes) (is_fast no))
 =>
-    (printout t "A " ?stype " person who is " ?otm " going up against " 
-    ?zt " zombies should use a " ?wep "."  crlf)
+   (send ?ins put-z_type walker)
+)
+
+;classifies the zombie as a sprinting zombie
+(defrule is_sprinter
+   ?ins <- (object (is-a ZOMBIE) (walking yes) (is_fast yes))
+=>
+   (send ?ins put-z_type sprinter)
+)
+
+;if the zombies are running, it suggests a gun
+(defrule if_sprinters (declare (salience -25))
+   (object (is-a SURVIVOR) (on_the_move yes))
+   (object (is-a ZOMBIE) (z_type sprinter))
+=> 
+   (assert (weapon_type gun))
+)
+
+;suggests the weapon for a fit survivor and a walking zombie
+(defrule fit_walk(declare (salience -50))
+   (object (is-a SURVIVOR) (sur_type fit) (on_the_move yes))
+   (object (is-a ZOMBIE) (z_type walker))
+=>
+   (assert (weapon_type bow))
+)
+
+;suggests the weapon for a fit survivor and a crawling zombie
+(defrule fit_crawl(declare (salience -50))
+   (object (is-a SURVIVOR) (sur_type fit) (on_the_move yes))
+   (object (is-a ZOMBIE) (z_type crawler))
+=>
+   (assert (weapon_type club))
+)
+
+;suggests the weapon for a runner survivor and a walking zombie
+(defrule run_walk(declare (salience -50))
+   (object (is-a SURVIVOR) (sur_type runner) (on_the_move yes))
+   (object (is-a ZOMBIE) (z_type walker))
+=>
+   (assert (weapon_type bow))
+)
+
+;suggests the weapon for a runner survivor and a crawling zombie
+(defrule run_crawl(declare (salience -50))
+   (object (is-a SURVIVOR) (sur_type runner) (on_the_move yes))
+   (object (is-a ZOMBIE) (z_type crawler))
+=>
+   (assert (weapon_type sword))
+)
+
+;suggests the weapon for a powerful survivor and a walking zombie
+(defrule power_walk(declare (salience -50))
+   (object (is-a SURVIVOR) (sur_type power) (on_the_move yes))
+   (object (is-a ZOMBIE) (z_type walker))
+=>
+   (assert (weapon_type sword))
+)
+
+;suggests the weapon for a powerful survivor and a crawling zombie
+(defrule power_crawl(declare (salience -50))
+   (object (is-a SURVIVOR) (sur_type power) (on_the_move yes))
+   (object (is-a ZOMBIE) (z_type crawler))
+=>
+   (assert (weapon_type club))
+)
+
+;Prints out the final statement which suggests the weapon
+(defrule suggest_weapon (declare (salience -150))
+   (object (is-a SURVIVOR) (sur_type ?stype) (on_the_move yes))
+   (object (is-a ZOMBIE) (z_type ?zt))
+   (weapon_type ?wep)
+=>
+   (printout t "A " ?stype " type person who is on the move going up against " 
+   ?zt " zombies should use a " ?wep "."  crlf)
 )
